@@ -1,0 +1,9 @@
+# Jupyter notebooks
+.ipynb_checkpoints
+test.ipynb
+
+# downloaded data
+data
+
+# logs
+logs

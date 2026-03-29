@@ -1,0 +1,5 @@
+S3_PATH: s3://janelia-cosem-datasets
+DATASET_NAMES: 
+  - jrc_hela-2
+  - jrc_hela-3
+SCALE: s2
