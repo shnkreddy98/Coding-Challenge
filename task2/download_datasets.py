@@ -37,12 +37,16 @@ def get_metadata(group: zarr.Group, path: str, scale: str):
 
 
 def find_crops_with_mito(group: zarr.Group) -> list[str]:
-    """Return list of crop names that have a mito label."""
+    """Return list of crop names that have a mito label with voxel data."""
     gt = group['recon-1/labels/groundtruth']
-    return [
-        name for name, crop in gt.groups() 
-        if 'mito' in crop.group_keys()
-    ]
+    crops = []
+    for name, crop in gt.groups():
+        if 'mito' not in crop.group_keys():
+            continue
+        mito_arr = crop['mito/s2']
+        if (mito_arr[:] == 1).any():
+            crops.append(name)
+    return crops
 
 
 def get_em_patch_for_crop(
@@ -57,9 +61,8 @@ def get_em_patch_for_crop(
     mito_path = f'recon-1/labels/groundtruth/{crop_name}/mito'
     em_path = 'recon-1/em/fibsem-uint8'
 
-    # get voxel sizes in nm
     em_voxel_size, _ = get_metadata(group, em_path, scale)
-    _, crop_translation = get_metadata(group, mito_path, scale)
+    mito_voxel_size, crop_translation = get_metadata(group, mito_path, scale)
 
     # convert nm offset to voxel indices in EM array
     z_start = int(round(crop_translation[0] / em_voxel_size[0]))
@@ -68,24 +71,27 @@ def get_em_patch_for_crop(
 
     # get mito array — shape tells us the crop size
     mito_arr = group[f'{mito_path}/{scale}']
-    z_size, y_size, x_size = mito_arr.shape
 
-    # fetch aligned EM patch — zarr only downloads these chunks from S3
+    # use physical size to compute EM slice counts
+    z_physical = mito_arr.shape[0] * mito_voxel_size[0]
+    y_physical = mito_arr.shape[1] * mito_voxel_size[1]
+    x_physical = mito_arr.shape[2] * mito_voxel_size[2]
+
+    z_size_em = int(round(z_physical / em_voxel_size[0]))
+    y_size_em = int(round(y_physical / em_voxel_size[1]))
+    x_size_em = int(round(x_physical / em_voxel_size[2]))
+
     em_arr = group[f'{em_path}/{scale}']
     em_patch = em_arr[
-        z_start:z_start + z_size,
-        y_start:y_start + y_size,
-        x_start:x_start + x_size
+        z_start:z_start + z_size_em,
+        y_start:y_start + y_size_em,
+        x_start:x_start + x_size_em
     ]
 
-    # fetch mito mask
     mito_mask = mito_arr[:]
 
-    logger.info(f"  crop {crop_name}: offset=({z_start}, {y_start}, {x_start}) shape=({z_size}, {y_size}, {x_size})")
-
-    assert em_patch.shape == mito_mask.shape, (
-        f"Shape mismatch: em={em_patch.shape} mask={mito_mask.shape}"
-    )
+    logger.info(f"  crop {crop_name}: offset=({z_start},{y_start},{x_start}) "
+                f"em_shape={em_patch.shape} mito_shape={mito_mask.shape}")
 
     return em_patch, mito_mask
 
