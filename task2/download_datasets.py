@@ -1,4 +1,3 @@
-import argparse
 import fsspec
 import logging
 import numpy as np
@@ -6,14 +5,14 @@ import traceback
 import zarr
 
 from pathlib import Path
+from utils.config import cfg
 from utils.logging import custom_logging
-from utils.io import read_file
 
 custom_logging()
 logger = logging.getLogger(__name__)
 
 
-OUTPUT_DIR = Path("data")
+DATA_DIR = Path(cfg['DATA_DIR'])
 
 
 def open_group(s3_path: str) -> zarr.Group:
@@ -97,7 +96,7 @@ def get_em_patch_for_crop(
 
 
 def save(dataset_name: str, crop_name: str, em_patch: np.ndarray, mito_mask: np.ndarray):
-    out = OUTPUT_DIR / dataset_name / crop_name
+    out = DATA_DIR / dataset_name / crop_name
     out.mkdir(parents=True, exist_ok=True)
     np.save(out / "em.npy", em_patch)
     np.save(out / "mito_mask.npy", mito_mask)
@@ -131,25 +130,11 @@ def download_dataset(name: str, s3_path: str, scale: str):
 
 
 if __name__ == "__main__":
-    OUTPUT_DIR.mkdir(exist_ok=True)
-    parser = argparse.ArgumentParser(
-        prog='Download Janelia Cosem Datasets',
-        description='Download the data from the janelia-cosem-datasets s3 bucket based on the dataset names and scale',
-    )
+    DATA_DIR.mkdir(exist_ok=True)
 
-    parser.add_argument(
-        '-c', 
-        '--config', 
-        required=True, 
-        help='Path to config file'
-    )
-    args = parser.parse_args()
-
-    config = read_file(args.config)
-
-    dataset_names = config['DATASET_NAMES']
-    s3_path = config['S3_PATH']
-    scale = config['SCALE']
+    dataset_names = cfg['DATASET_NAMES']
+    s3_path = cfg['S3_PATH']
+    scale = cfg['SCALE']
 
     for name in dataset_names:
         dataset_path = f'{s3_path}/{name}/{name}.zarr'

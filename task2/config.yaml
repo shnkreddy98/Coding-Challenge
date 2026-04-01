@@ -1,5 +1,16 @@
 S3_PATH: s3://janelia-cosem-datasets
-DATASET_NAMES: 
+DATASET_NAMES:
   - jrc_hela-2
   - jrc_hela-3
 SCALE: s2
+
+DATA_DIR: data
+
+MODEL_NAME: facebook/dinov3-vitl16-pretrain-lvd1689m
+EMBED_DIM: 1024
+PROJ_DIM: 256
+
+N_EPOCHS: 3
+LR: 0.001
+
+DISPLAY_SIZE: 400

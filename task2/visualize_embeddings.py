@@ -5,8 +5,10 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from PIL import Image
 from sklearn.decomposition import PCA
+from utils.config import cfg
+from utils.retrieval import load_mito_mask
 
-DATA_DIR = Path("data")
+DATA_DIR = Path(cfg['DATA_DIR'])
 
 st.set_page_config(layout="wide", page_title="Task 2 — Dense Embeddings")
 st.markdown(
@@ -35,27 +37,42 @@ def get_crops(dataset: str) -> list[str]:
 def load_em_and_mask(dataset: str, crop: str):
     crop_path = DATA_DIR / dataset / crop
     em = np.load(crop_path / 'em.npy', mmap_mode='r')
-
-    from skimage.transform import resize
-    mito_mask_full = np.load(crop_path / 'mito_mask.npy', mmap_mode='r')
-    mito_mask = (resize(
-        mito_mask_full.astype(np.float32), em.shape,
-        order=0, anti_aliasing=False
-    ) > 0.5).astype(np.uint8)
-
+    mito_mask = load_mito_mask(crop_path, em.shape)
     return em, mito_mask
+
+
+@st.cache_resource
+def fit_pca(dataset: str, crop: str, max_pixels: int = 50_000) -> PCA:
+    """Fit PCA on a random subsample drawn from all z-slices.
+
+    Fitting once across slices ensures the RGB colour mapping is consistent
+    when the user scrubs through z — the same PCA axes are used every time.
+    """
+    crop_path = DATA_DIR / dataset / crop
+    data = np.load(crop_path / 'mito_embeddings.npz', mmap_mode='r')
+    embeddings = data['embeddings']          # (Z, H, W, 1024) float16
+    Z, H, W, D = embeddings.shape
+
+    rng = np.random.default_rng(0)
+    total_pixels = Z * H * W
+    idx = rng.choice(total_pixels, size=min(max_pixels, total_pixels), replace=False)
+
+    flat = embeddings.reshape(total_pixels, D).astype(np.float32)
+    pca = PCA(n_components=3)
+    pca.fit(flat[idx])
+    return pca
 
 
 @st.cache_data
 def get_pca_rgb(dataset: str, crop: str, z: int) -> np.ndarray:
-    """Load one z-slice of embeddings and reduce to RGB via PCA."""
+    """Apply the crop-level PCA to one z-slice and return an (H, W, 3) uint8 image."""
     crop_path = DATA_DIR / dataset / crop
     data = np.load(crop_path / 'mito_embeddings.npz', mmap_mode='r')
     emb_slice = data['embeddings'][z].astype(np.float32)  # (H, W, 1024)
     H, W, D = emb_slice.shape
 
-    pca = PCA(n_components=3)
-    rgb = pca.fit_transform(emb_slice.reshape(H * W, D))  # (H*W, 3)
+    pca = fit_pca(dataset, crop)
+    rgb = pca.transform(emb_slice.reshape(H * W, D))       # (H*W, 3)
 
     for i in range(3):
         ch = rgb[:, i]
@@ -87,10 +104,10 @@ with col1:
     st.subheader("EM + Mito mask")
     em_rgb = np.stack([em[z]] * 3, axis=-1).astype(np.uint8)
     em_rgb[mito_mask[z] == 1] = [180, 80, 80]
-    st.image(Image.fromarray(em_rgb))
+    st.image(Image.fromarray(em_rgb), width='stretch')
 
 with col2:
     st.subheader("Dense embeddings (PCA → RGB)")
     with st.spinner("Running PCA on slice..."):
         pca_img = get_pca_rgb(dataset, crop, z)
-    st.image(Image.fromarray(pca_img))
+    st.image(Image.fromarray(pca_img), width='stretch')

@@ -1,0 +1,219 @@
+import streamlit as st
+import numpy as np
+import matplotlib.pyplot as plt
+
+from PIL import Image
+from pathlib import Path
+from streamlit_image_coordinates import streamlit_image_coordinates
+
+from utils.config import cfg
+from utils.retrieval import (
+    load_crop,
+    get_pixel_embedding,
+    compute_similarity,
+    build_similarity_map,
+    get_best_z,
+)
+
+DATA_DIR = Path(cfg['DATA_DIR'])
+
+st.set_page_config(layout="wide", page_title="Task 3 — Mito Retrieval")
+st.markdown(
+    """
+    <style>
+    .stApp {
+        background-color: #000000;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+st.title("Task 3 - Mitochondria Embedding Retrieval")
+
+
+def get_datasets() -> list[str]:
+    return sorted([
+        d.name for d in DATA_DIR.iterdir()
+        if d.is_dir()
+    ])
+
+
+def get_crops(dataset: str) -> list[str]:
+    dataset_path = DATA_DIR / dataset
+    return sorted([
+        c.name for c in dataset_path.iterdir()
+        if c.is_dir() and (c / 'mito_embeddings_projected.npz').exists()
+    ])
+
+
+@st.cache_resource
+def cached_load_crop(dataset: str, crop: str) -> dict:
+    return load_crop(dataset, crop)
+
+
+def overlay_similarity(
+        em_slice: np.ndarray,
+        sim_map: np.ndarray,
+        size: int = 400
+) -> plt.Figure:
+    """Render EM slice with cosine similarity heat map overlaid."""
+    dpi = 100
+    fig, ax = plt.subplots(figsize=(size/dpi, size/dpi), dpi=dpi)
+    ax.imshow(em_slice, cmap='gray', interpolation='nearest')
+    if sim_map.max() > 0:
+        ax.imshow(sim_map, cmap='hot', alpha=0.6, vmin=0, vmax=1)
+    plt.colorbar(
+        plt.cm.ScalarMappable(cmap='hot', norm=plt.Normalize(0, 1)),
+        ax=ax,
+        fraction=0.046,
+        label='cosine similarity'
+    )
+    ax.axis('off')
+    plt.tight_layout(pad=0)
+    return fig
+
+
+def em_with_mito_overlay(
+        em_slice: np.ndarray,
+        mito_slice: np.ndarray
+) -> Image.Image:
+    """Return RGB PIL image with mito mask pixels coloured red."""
+    em_rgb = np.stack([em_slice] * 3, axis=-1).astype(np.uint8)
+    em_rgb[mito_slice == 1] = [180, 80, 80]
+    return Image.fromarray(em_rgb)
+
+
+if 'query_emb' not in st.session_state:
+    st.session_state.query_emb = None
+if 'clicked_y' not in st.session_state:
+    st.session_state.clicked_y = None
+if 'clicked_x' not in st.session_state:
+    st.session_state.clicked_x = None
+
+
+# --- Sidebar ---
+st.sidebar.title("Dataset Selection")
+datasets = get_datasets()
+
+st.sidebar.subheader("Query (source)")
+query_dataset = st.sidebar.selectbox("Dataset", datasets, key="query_dataset")
+crops = get_crops(query_dataset)
+if not crops:
+    st.warning(f"No projected embeddings found in {query_dataset}. Run project_embeddings.py first.")
+    st.stop()
+query_crop = st.sidebar.selectbox("Crop", crops, key="query_crop")
+
+st.sidebar.divider()
+
+st.sidebar.subheader("Intra-dataset")
+st.sidebar.caption("Same dataset, different crop")
+intra_crops = [c for c in get_crops(query_dataset) if c != query_crop]
+if intra_crops:
+    intra_crop = st.sidebar.selectbox("Crop", intra_crops, key="intra_crop")
+    intra_dataset = query_dataset
+else:
+    st.sidebar.warning("No other crops in this dataset")
+    intra_crop = None
+    intra_dataset = None
+
+st.sidebar.divider()
+
+st.sidebar.subheader("Inter-dataset")
+st.sidebar.caption("Must be a different dataset from query")
+inter_datasets = [d for d in datasets if d != query_dataset]
+if inter_datasets:
+    inter_dataset = st.sidebar.selectbox("Dataset", inter_datasets, key="inter_dataset")
+    inter_crop = st.sidebar.selectbox("Crop", get_crops(inter_dataset), key="inter_crop")
+else:
+    st.sidebar.warning("No other datasets available")
+    inter_dataset = None
+    inter_crop = None
+
+
+# --- Data loading ---
+query_data = cached_load_crop(query_dataset, query_crop)
+Z_QUERY = get_best_z(query_data)
+
+intra_data = cached_load_crop(intra_dataset, intra_crop) if intra_dataset and intra_crop else None
+Z_INTRA = get_best_z(intra_data) if intra_data else None
+
+inter_data = cached_load_crop(inter_dataset, inter_crop) if inter_dataset and inter_crop else None
+Z_INTER = get_best_z(inter_data) if inter_data else None
+
+
+z = st.slider(
+    'Query z slice',
+    min_value=0,
+    max_value=query_data['em'].shape[0] - 1,
+    value=Z_QUERY
+)
+
+DISPLAY_SIZE = cfg['DISPLAY_SIZE']
+
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.subheader("Query")
+    st.caption(f"{query_dataset}/{query_crop} | z={z}")
+
+    em_slice = query_data['em'][z]
+    mito_slice = query_data['mito_mask'][z]
+    query_pil = em_with_mito_overlay(em_slice, mito_slice)
+    query_pil_large = query_pil.resize((DISPLAY_SIZE, DISPLAY_SIZE), Image.NEAREST)
+
+    if st.session_state.clicked_y is not None:
+        from PIL import ImageDraw
+        scale_y = DISPLAY_SIZE / em_slice.shape[0]
+        scale_x = DISPLAY_SIZE / em_slice.shape[1]
+        dot_y = int(st.session_state.clicked_y * scale_y)
+        dot_x = int(st.session_state.clicked_x * scale_x)
+        draw = ImageDraw.Draw(query_pil_large)
+        r = 5
+        draw.ellipse(
+            [dot_x - r, dot_y - r, dot_x + r, dot_y + r],
+            fill=(0, 255, 0),
+            outline=(255, 255, 255)
+        )
+
+    coords = streamlit_image_coordinates(query_pil_large, key="query_image")
+
+    if coords is not None:
+        scale_y = em_slice.shape[0] / DISPLAY_SIZE
+        scale_x = em_slice.shape[1] / DISPLAY_SIZE
+        y = int(coords['y'] * scale_y)
+        x = int(coords['x'] * scale_x)
+
+        st.session_state.query_emb = get_pixel_embedding(query_data, z, y, x)
+        st.session_state.clicked_y = y
+        st.session_state.clicked_x = x
+        st.success(f"Query pixel: y={y}, x={x}")
+
+with col2:
+    st.subheader("Intra-dataset")
+    if intra_data is not None:
+        st.caption(f"{intra_dataset}/{intra_crop} | z={Z_INTRA}")
+        if st.session_state.query_emb is not None:
+            sim_intra = compute_similarity(st.session_state.query_emb, intra_data['embeddings'])
+            sim_map_intra = build_similarity_map(sim_intra, Z_INTRA)
+            fig = overlay_similarity(intra_data['em'][Z_INTRA], sim_map_intra, DISPLAY_SIZE)
+            st.pyplot(fig)
+            plt.close()
+        else:
+            st.info("Click a mito pixel in Query panel")
+    else:
+        st.warning("No intra-dataset crop available")
+
+with col3:
+    st.subheader("Inter-dataset")
+    if inter_data is not None:
+        st.caption(f"{inter_dataset}/{inter_crop} | z={Z_INTER}")
+        if st.session_state.query_emb is not None:
+            sim_inter = compute_similarity(st.session_state.query_emb, inter_data['embeddings'])
+            sim_map_inter = build_similarity_map(sim_inter, Z_INTER)
+            fig = overlay_similarity(inter_data['em'][Z_INTER], sim_map_inter, DISPLAY_SIZE)
+            st.pyplot(fig)
+            plt.close()
+        else:
+            st.info("Click a mito pixel in Query panel")
+    else:
+        st.warning("No inter-dataset crop available")

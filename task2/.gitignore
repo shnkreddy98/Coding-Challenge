@@ -1,9 +1,12 @@
 # Jupyter notebooks
 .ipynb_checkpoints
-test.ipynb
+notebooks
 
 # downloaded data
 data
 
 # logs
 logs
+
+# env variables
+.env
