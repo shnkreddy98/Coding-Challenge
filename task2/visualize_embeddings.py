@@ -87,10 +87,10 @@ with col1:
     st.subheader("EM + Mito mask")
     em_rgb = np.stack([em[z]] * 3, axis=-1).astype(np.uint8)
     em_rgb[mito_mask[z] == 1] = [180, 80, 80]
-    st.image(Image.fromarray(em_rgb), use_container_width=True)
+    st.image(Image.fromarray(em_rgb))
 
 with col2:
     st.subheader("Dense embeddings (PCA → RGB)")
     with st.spinner("Running PCA on slice..."):
         pca_img = get_pca_rgb(dataset, crop, z)
-    st.image(Image.fromarray(pca_img), use_container_width=True)
+    st.image(Image.fromarray(pca_img))
