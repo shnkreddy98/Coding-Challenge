@@ -67,7 +67,9 @@ dense = dense.squeeze(0).permute(1, 2, 0)  # (H, W, 1024)
 
 Bilinear interpolation is preferred over nearest-neighbour because it produces smooth transitions at patch boundaries rather than hard block artifacts, which matters when computing per-pixel cosine similarity.
 
-The full dense volume is saved per crop as `(Z, H, W, 1024)` float16 in `mito_embeddings.npz`, allowing any pixel to be queried directly by index.
+The full dense volume is saved per crop:
+-  `dense_embeddings.npy` — `(Z, H, W, 1024)` float16 per pixel
+
 
 ### Visualisation
 
@@ -117,6 +119,13 @@ Train a linear projection head (1024 → 256) plus a binary segmentation head (2
 | **Total trainable** | **~262 K (0.08%)** |
 
 DINOv3's self-supervised pretraining produces embeddings that already separate visually distinct regions. Mitochondria have a consistent appearance in EM that differs from surrounding structures, so a linear probe can learn to separate them with very few trainable parameters and minimal risk of overfitting.
+
+The linear probe is trained on the pre-extracted embeddings — no DINOv3 forward pass during training. Run `project_embeddings.py` next to apply the projection to all crops.
+
+Saved files:
+- `data/projection.pt` — trained projection weights
+- `mito_embeddings.npz` — projected embeddings per crop as `(Z, H, W, 256)` float16
+
 
 ---
 

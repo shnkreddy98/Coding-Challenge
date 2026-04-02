@@ -7,7 +7,6 @@ from transformers import AutoImageProcessor, AutoModel
 from utils.config import cfg
 
 MODEL_NAME = cfg['MODEL_NAME']
-EMBED_DIM = cfg['EMBED_DIM']
 PROJ_DIM = cfg['PROJ_DIM']
 
 
@@ -16,6 +15,7 @@ class DinoV3Model():
         self.processor = AutoImageProcessor.from_pretrained(model_name)
         self.model = AutoModel.from_pretrained(model_name, device_map="auto")
         self.device = next(self.model.parameters()).device
+        self.embed_dim = self.model.config.hidden_size
 
     def get_embeddings(self, image: Image):
         inputs = self.processor(images=image, return_tensors="pt").to(self.device)

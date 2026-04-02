@@ -20,7 +20,7 @@ def load_mito_mask(crop_path: Path, em_shape: tuple) -> np.ndarray:
 
 def load_crop(dataset: str, crop: str) -> dict:
     crop_path = DATA_DIR / dataset / crop
-    data = np.load(crop_path / 'mito_embeddings_projected.npz')
+    data = np.load(crop_path / 'mito_embeddings.npz')
     em = np.load(crop_path / 'em.npy')
     mito_mask_ds = load_mito_mask(crop_path, em.shape)
 

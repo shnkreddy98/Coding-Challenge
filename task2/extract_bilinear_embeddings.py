@@ -1,7 +1,6 @@
 import gc
 import logging
 import numpy as np
-import psutil
 import torch
 
 from PIL import Image
@@ -39,46 +38,35 @@ def process_slice(model: DinoV3Model, em_slice: np.ndarray) -> np.ndarray:
 def process_crop(model: DinoV3Model, crop_path: Path) -> None:
     """Extract and save dense embeddings for all z-slices of one crop.
 
-    Output: <crop_path>/mito_embeddings.npz  shape (Z, H, W, 1024) float16
+    Output: <crop_path>/dense_embeddings.npy  shape (Z, H, W, 1024) float16
     Skips the crop if the output file already exists.
     """
-    save_path = crop_path / 'mito_embeddings.npz'
+    save_path = crop_path / 'dense_embeddings.npy'
     if save_path.exists():
         logger.info(f"  skipping {crop_path} — already done")
         return
 
     em = np.load(crop_path / 'em.npy', mmap_mode='r')
-    slices = []
+    Z, H, W = em.shape
+
+    volume = np.lib.format.open_memmap(
+        save_path, mode='w+', dtype=np.float16, shape=(Z, H, W, model.embed_dim)
+    )
 
     with torch.no_grad():
-        for z_idx in range(em.shape[0]):
-            dense = process_slice(model, em[z_idx])
-            slices.append(dense)
-            logger.info(
-                f"  [z={z_idx}/{em.shape[0]-1}] "
-                f"RAM: {psutil.virtual_memory().used / 1e9:.1f}GB"
-            )
+        for z_idx in range(Z):
+            volume[z_idx] = process_slice(model, em[z_idx])
+            logger.info(f"  [z={z_idx}/{Z-1}]")
 
-    volume = np.stack(slices, axis=0)  # (Z, H, W, 1024)
-    np.savez_compressed(save_path, embeddings=volume)
     logger.info(f"  saved {volume.shape} → {save_path}")
 
-    del slices, volume
+    del volume
     gc.collect()
     torch.cuda.empty_cache()
 
 
 def extract_bilinear() -> None:
     model = DinoV3Model()
-
-    logger.info(
-        f"[after model load] RAM: {psutil.virtual_memory().used / 1e9:.1f}GB"
-        f" / {psutil.virtual_memory().total / 1e9:.1f}GB"
-    )
-    logger.info(
-        f"[after model load] GPU: {torch.cuda.memory_allocated() / 1e9:.1f}GB"
-        f" / {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f}GB"
-    )
 
     all_crops = get_all_crops(DATA_DIR)
     logger.info(f"Total crops: {len(all_crops)}")

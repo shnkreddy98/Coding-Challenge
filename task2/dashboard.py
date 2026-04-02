@@ -42,7 +42,7 @@ def get_crops(dataset: str) -> list[str]:
     dataset_path = DATA_DIR / dataset
     return sorted([
         c.name for c in dataset_path.iterdir()
-        if c.is_dir() and (c / 'mito_embeddings_projected.npz').exists()
+        if c.is_dir() and (c / 'mito_embeddings.npz').exists()
     ])
 
 

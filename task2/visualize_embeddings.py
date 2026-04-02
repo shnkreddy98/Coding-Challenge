@@ -29,7 +29,7 @@ def get_datasets() -> list[str]:
 def get_crops(dataset: str) -> list[str]:
     return sorted([
         c.name for c in (DATA_DIR / dataset).iterdir()
-        if c.is_dir() and (c / 'mito_embeddings.npz').exists()
+        if c.is_dir() and (c / 'dense_embeddings.npy').exists()
     ])
 
 
@@ -49,8 +49,7 @@ def fit_pca(dataset: str, crop: str, max_pixels: int = 50_000) -> PCA:
     when the user scrubs through z — the same PCA axes are used every time.
     """
     crop_path = DATA_DIR / dataset / crop
-    data = np.load(crop_path / 'mito_embeddings.npz', mmap_mode='r')
-    embeddings = data['embeddings']          # (Z, H, W, 1024) float16
+    embeddings = np.load(crop_path / 'dense_embeddings.npy', mmap_mode='r')  # (Z, H, W, 1024) float16
     Z, H, W, D = embeddings.shape
 
     rng = np.random.default_rng(0)
@@ -67,8 +66,8 @@ def fit_pca(dataset: str, crop: str, max_pixels: int = 50_000) -> PCA:
 def get_pca_rgb(dataset: str, crop: str, z: int) -> np.ndarray:
     """Apply the crop-level PCA to one z-slice and return an (H, W, 3) uint8 image."""
     crop_path = DATA_DIR / dataset / crop
-    data = np.load(crop_path / 'mito_embeddings.npz', mmap_mode='r')
-    emb_slice = data['embeddings'][z].astype(np.float32)  # (H, W, 1024)
+    embeddings = np.load(crop_path / 'dense_embeddings.npy', mmap_mode='r')
+    emb_slice = embeddings[z].astype(np.float32)  # (H, W, 1024)
     H, W, D = emb_slice.shape
 
     pca = fit_pca(dataset, crop)

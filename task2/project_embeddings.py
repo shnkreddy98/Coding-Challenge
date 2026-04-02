@@ -10,8 +10,6 @@ from utils.dinov3 import get_all_crops
 from utils.logging import custom_logging
 
 DATA_DIR = Path(cfg['DATA_DIR'])
-EMBED_DIM = cfg['EMBED_DIM']
-PROJ_DIM = cfg['PROJ_DIM']
 
 custom_logging()
 logger = logging.getLogger(__name__)
@@ -27,27 +25,28 @@ if __name__ == "__main__":
         logger.error(f"projection.pt not found at {proj_path}")
         exit(1)
 
-    projection = nn.Linear(EMBED_DIM, PROJ_DIM)
-    projection.load_state_dict(torch.load(proj_path, map_location='cpu'))
+    state_dict = torch.load(proj_path, map_location='cpu')
+    embed_dim, proj_dim = state_dict['weight'].shape[1], state_dict['weight'].shape[0]
+    projection = nn.Linear(embed_dim, proj_dim)
+    projection.load_state_dict(state_dict)
     projection.eval()
     logger.info(f"projection loaded from {proj_path}")
 
     all_crops = get_all_crops(DATA_DIR)
 
     for dataset, crop, crop_path in all_crops:
-        src = crop_path / 'mito_embeddings.npz'
-        dst = crop_path / 'mito_embeddings_projected.npz'
+        src = crop_path / 'dense_embeddings.npy'
+        dst = crop_path / 'mito_embeddings.npz'
 
         if not src.exists():
-            logger.info(f"  skipping {dataset}/{crop} — mito_embeddings.npz not found")
+            logger.info(f"  skipping {dataset}/{crop} — dense_embeddings.npy not found")
             continue
         if dst.exists():
             logger.info(f"  skipping {dataset}/{crop} — already done")
             continue
 
         logger.info(f"{dataset}/{crop}")
-        data = np.load(src, mmap_mode='r')
-        embeddings = data['embeddings']  # (Z, H, W, 1024) float16
+        embeddings = np.load(src, mmap_mode='r')  # (Z, H, W, 1024) float16
         Z, H, W, D = embeddings.shape
 
         slices = []
@@ -55,7 +54,7 @@ if __name__ == "__main__":
             for z_idx in range(Z):
                 flat = torch.tensor(embeddings[z_idx].astype(np.float32).reshape(H * W, D))
                 out = projection(flat).numpy().astype(np.float16)  # (H*W, 256)
-                slices.append(out.reshape(H, W, PROJ_DIM))
+                slices.append(out.reshape(H, W, proj_dim))
                 logger.info(f"  [z={z_idx}/{Z-1}]")
 
         volume = np.stack(slices, axis=0)  # (Z, H, W, 256)

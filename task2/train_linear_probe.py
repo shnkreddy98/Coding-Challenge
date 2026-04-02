@@ -1,11 +1,11 @@
 import gc
 import logging
 import numpy as np
-import psutil
 import torch
 import torch.nn as nn
 
 from pathlib import Path
+from transformers import AutoConfig
 from utils.config import cfg
 from utils.dinov3 import get_all_crops
 from utils.retrieval import load_mito_mask
@@ -14,8 +14,8 @@ from utils.logging import custom_logging
 DATA_DIR = Path(cfg['DATA_DIR'])
 N_EPOCHS = cfg['N_EPOCHS']
 LR = cfg['LR']
-EMBED_DIM = cfg['EMBED_DIM']
 PROJ_DIM = cfg['PROJ_DIM']
+EMBED_DIM = AutoConfig.from_pretrained(cfg['MODEL_NAME']).hidden_size
 
 custom_logging()
 logger = logging.getLogger(__name__)
@@ -71,7 +71,7 @@ def train_epoch(
 
         em = np.load(crop_path / 'em.npy', mmap_mode='r')
         mito_mask_ds = load_mito_mask(crop_path, em.shape)
-        dense_embeddings = np.load(crop_path / 'mito_embeddings.npz', mmap_mode='r')['embeddings'] # (Z, H, W, 1024)
+        dense_embeddings = np.load(crop_path / 'dense_embeddings.npy', mmap_mode='r')  # (Z, H, W, 1024)
 
         for z_idx in range(em.shape[0]):
             if mito_mask_ds[z_idx].sum() == 0:
