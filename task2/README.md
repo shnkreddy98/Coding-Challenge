@@ -13,6 +13,12 @@ Requires a CUDA-capable GPU (~1.4 GB VRAM for ViT-L, ~7 GB RAM after model load)
 
 [`download_datasets.py`](download_datasets.py) downloads EM image patches and mitochondria masks from the [OpenOrganelle](https://openorganelle.janelia.org) S3 bucket (public, anonymous access).
 
+Datasets, S3 path, resolution scale, and output directory are all set in `config.yaml`:
+- `DATASET_NAMES` - list of datasets to download (`jrc_hela-2`, `jrc_hela-3`)
+- `S3_PATH` - base S3 bucket path
+- `SCALE` - resolution level (`s2` by default)
+- `DATA_DIR` - local output directory
+
 For each dataset, the script finds all annotated crops that contain actual mitochondria voxels and downloads:
 - `em.npy` - raw EM image patch as `(Z, Y, X)` uint8
 - `mito_mask.npy` - binary mitochondria mask aligned to the EM patch
@@ -41,7 +47,7 @@ Scale `s2` gives 16 nm/px in y/x and 12.96 nm/px in z - a good balance between s
 
 [`extract_bilinear_embeddings.py`](extract_bilinear_embeddings.py) · [`utils/dinov3.py`](utils/dinov3.py)
 
-**Model:** DINOv3 ViT-L/16 (`facebook/dinov3-vitl16-pretrain-lvd1689m`) via HuggingFace Transformers.
+**Model:** DINOv3 ViT-L/16 (`facebook/dinov3-vitl16-pretrain-lvd1689m`) via HuggingFace Transformers. The model and embedding dimension are set via `MODEL_NAME` and `EMBED_DIM` in `config.yaml`.
 
 EM slices are greyscale - each slice is converted to RGB by repeating the single channel three times before passing to the processor.
 
@@ -87,7 +93,7 @@ Raw EM slice with mitochondria highlighted in red (left) and per-pixel DINOv3 em
 
 [`dashboard.py`](dashboard.py) · [`utils/retrieval.py`](utils/retrieval.py)
 
-Run `streamlit run dashboard.py`. Use the sidebar to select a query crop, an intra-dataset crop (same dataset, different crop), and an inter-dataset crop (different dataset). The query embedding is computed automatically - no clicking required.
+Run `streamlit run dashboard.py`. Use the sidebar to select a query crop, an intra-dataset crop (same dataset, different crop), and an inter-dataset crop (different dataset). The query embedding is computed automatically - no clicking required. Display size is controlled by `DISPLAY_SIZE` in `config.yaml`.
 
 ### 1. Within-Dataset Retrieval
 
@@ -123,7 +129,7 @@ With multiple queries the similarity maps tend to be broader and more complete. 
 
 **Proposed approach: linear probing on a frozen DINOv3 backbone.**
 
-Train a linear projection head (1024 -> 256) plus a binary segmentation head (256 -> 1) on top of a fully frozen DINOv3 ViT-L/16 backbone, using `BCEWithLogitsLoss` against the mito binary mask. Train across all crops from both datasets simultaneously so the projection generalises rather than overfitting to a single acquisition.
+Train a linear projection head (1024 -> 256) plus a binary segmentation head (256 -> 1) on top of a fully frozen DINOv3 ViT-L/16 backbone, using `BCEWithLogitsLoss` against the mito binary mask. Train across all crops from both datasets simultaneously so the projection generalises rather than overfitting to a single acquisition. Training parameters are set in `config.yaml`: `PROJ_DIM` (projection output size), `N_EPOCHS`, and `LR`.
 
 | Component | Parameters |
 |-----------|-----------|
