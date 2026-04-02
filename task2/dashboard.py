@@ -33,7 +33,11 @@ use_projected = st.sidebar.toggle(
     help="Uses 256-dim embeddings from trained linear probe. Run train_linear_probe.py + project_embeddings.py first.",
 )
 
-st.title("Task 4 - Mitochondria Embedding Retrieval (Linear Probe)" if use_projected else "Task 3 - Mitochondria Embedding Retrieval")
+st.title(
+    "Task 4 - Mitochondria Embedding Retrieval (Linear Probe)"
+    if use_projected
+    else "Task 3 - Mitochondria Embedding Retrieval"
+)
 
 
 def get_datasets() -> list[str]:
@@ -82,7 +86,6 @@ def em_with_mito_overlay(em_slice: np.ndarray, mito_slice: np.ndarray) -> Image.
     em_rgb = np.stack([em_slice] * 3, axis=-1).astype(np.uint8)
     em_rgb[mito_slice == 1] = [180, 80, 80]
     return Image.fromarray(em_rgb)
-
 
 
 # --- Sidebar ---
@@ -181,7 +184,9 @@ with col2:
         if query_emb is not None:
             sim_intra = compute_similarity(query_emb, intra_data["embeddings"])
             sim_map_intra = build_similarity_map(sim_intra, Z_INTRA)
-            fig = overlay_similarity(intra_data["em"][Z_INTRA], sim_map_intra, DISPLAY_SIZE)
+            fig = overlay_similarity(
+                intra_data["em"][Z_INTRA], sim_map_intra, DISPLAY_SIZE
+            )
             st.pyplot(fig)
             plt.close()
         else:
@@ -196,7 +201,9 @@ with col3:
         if query_emb is not None:
             sim_inter = compute_similarity(query_emb, inter_data["embeddings"])
             sim_map_inter = build_similarity_map(sim_inter, Z_INTER)
-            fig = overlay_similarity(inter_data["em"][Z_INTER], sim_map_inter, DISPLAY_SIZE)
+            fig = overlay_similarity(
+                inter_data["em"][Z_INTER], sim_map_inter, DISPLAY_SIZE
+            )
             st.pyplot(fig)
             plt.close()
         else:

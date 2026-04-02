@@ -26,7 +26,9 @@ def load_crop(dataset: str, crop: str, projected: bool = False) -> dict:
         data = np.load(proj_path)
         embeddings = data["embeddings"]  # (Z, H, W, 256) float16
     else:
-        embeddings = np.load(crop_path / "dense_embeddings.npy", mmap_mode="r")  # (Z, H, W, 1024) float16
+        embeddings = np.load(
+            crop_path / "dense_embeddings.npy", mmap_mode="r"
+        )  # (Z, H, W, 1024) float16
 
     em = np.load(crop_path / "em.npy")
     mito_mask_ds = load_mito_mask(crop_path, em.shape)
@@ -42,12 +44,12 @@ def load_crop(dataset: str, crop: str, projected: bool = False) -> dict:
 
 def get_mito_embedding(crop_data: dict, z: int) -> np.ndarray | None:
     """Mean embedding of all mito pixels in a z-slice. Returns None if no mito pixels."""
-    mito_slice = crop_data["mito_mask"][z]           # (H, W)
-    emb_slice = crop_data["embeddings"][z]           # (H, W, 1024)
+    mito_slice = crop_data["mito_mask"][z]  # (H, W)
+    emb_slice = crop_data["embeddings"][z]  # (H, W, 1024)
     mito_pixels = emb_slice[mito_slice == 1].astype(np.float32)  # (N, 1024)
     if len(mito_pixels) == 0:
         return None
-    return mito_pixels.mean(axis=0)                  # (1024,)
+    return mito_pixels.mean(axis=0)  # (1024,)
 
 
 def compute_similarity(query_emb: np.ndarray, target_emb: np.ndarray) -> np.ndarray:
