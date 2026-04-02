@@ -11,7 +11,7 @@ Requires a CUDA-capable GPU (~1.4 GB VRAM for ViT-L, ~7 GB RAM after model load)
 
 ## Task 1 — Data Acquisition
 
-Downloads EM image patches and mitochondria masks from the [OpenOrganelle](https://openorganelle.janelia.org) S3 bucket (public, anonymous access).
+[`download_datasets.py`](download_datasets.py) downloads EM image patches and mitochondria masks from the [OpenOrganelle](https://openorganelle.janelia.org) S3 bucket (public, anonymous access).
 
 For each dataset, the script finds all annotated crops that contain actual mitochondria voxels and downloads:
 - `em.npy` — raw EM image patch as `(Z, Y, X)` uint8
@@ -38,6 +38,8 @@ Scale `s2` gives 16 nm/px in y/x and 12.96 nm/px in z — a good balance between
 ---
 
 ## Task 2 — Feature Extraction with DINO
+
+[`extract_bilinear_embeddings.py`](extract_bilinear_embeddings.py) · [`utils/dinov3.py`](utils/dinov3.py)
 
 **Model:** DINOv3 ViT-L/16 (`facebook/dinov3-vitl16-pretrain-lvd1689m`) via HuggingFace Transformers.
 
@@ -73,11 +75,13 @@ The full dense volume is saved per crop:
 
 ### Visualisation
 
-`visualize_embeddings.py` is a lightweight Streamlit dashboard that loads one z-slice at a time and shows the EM + mito overlay alongside the dense embeddings reduced to RGB via PCA. The PCA colour structure confirms the off-the-shelf DINO features are already semantically meaningful — mito regions cluster to a distinct colour with no training.
+[`visualize_embeddings.py`](visualize_embeddings.py) is a lightweight Streamlit dashboard that loads one z-slice at a time and shows the EM + mito overlay alongside the dense embeddings reduced to RGB via PCA. The PCA colour structure confirms the off-the-shelf DINO features are already semantically meaningful — mito regions cluster to a distinct colour with no training.
 
 ---
 
 ## Task 3 — Embedding-Based Retrieval & Visualization
+
+[`dashboard.py`](dashboard.py) · [`utils/retrieval.py`](utils/retrieval.py)
 
 Run `streamlit run dashboard.py`. Use the sidebar to select a query crop, an intra-dataset crop (same dataset, different crop), and an inter-dataset crop (different dataset). Click any pixel in the query panel — a similarity heat map appears for the other two panels instantly.
 
@@ -106,6 +110,8 @@ With multiple queries the similarity maps tend to be broader and more complete, 
 ---
 
 ## Task 4 — Proposal: Improving Mitochondria Detection with Minimal Fine-Tuning
+
+[`train_linear_probe.py`](train_linear_probe.py) · [`project_embeddings.py`](project_embeddings.py)
 
 **Proposed approach: linear probing on a frozen DINOv3 backbone.**
 
@@ -180,9 +186,9 @@ This runs all steps in order, printing PID, GPU/VRAM usage, and log path after e
 
 | Step | Script | Task |
 |------|--------|------|
-| 1 | `download_datasets.py` | Task 1 — download EM patches and mito masks |
-| 2 | `extract_bilinear_embeddings.py` | Task 2 — extract dense bilinear embeddings |
-| 3 | `train_linear_probe.py` | Task 4 — train linear projection on frozen DINOv3 |
-| 4 | `project_embeddings.py` | Task 3/4 — project embeddings to 256-dim |
-| 5 | `visualize_embeddings.py` | Task 2 — visualise dense embeddings (PCA → RGB) |
-| 6 | `dashboard.py` | Task 3 — retrieval dashboard |
+| 1 | [`download_datasets.py`](download_datasets.py) | Task 1 — download EM patches and mito masks |
+| 2 | [`extract_bilinear_embeddings.py`](extract_bilinear_embeddings.py) | Task 2 — extract dense bilinear embeddings |
+| 3 | [`train_linear_probe.py`](train_linear_probe.py) | Task 4 — train linear projection on frozen DINOv3 |
+| 4 | [`project_embeddings.py`](project_embeddings.py) | Task 3/4 — project embeddings to 256-dim |
+| 5 | [`visualize_embeddings.py`](visualize_embeddings.py) | Task 2 — visualise dense embeddings (PCA → RGB) |
+| 6 | [`dashboard.py`](dashboard.py) | Task 3 — retrieval dashboard |
