@@ -41,6 +41,7 @@ class DinoV3Model():
 
 
 def get_all_crops(data_dir: Path, datasets: list[str] = []) -> list[tuple]:
+    """Walk through the data directory and get all crops downloaded"""
     crops = []
     if not datasets:
         datasets = [p.name for p in data_dir.iterdir() if p.is_dir()]

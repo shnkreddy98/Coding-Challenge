@@ -161,23 +161,19 @@ DISPLAY_SIZE: 400
 
 ## Running Order
 
+Run the full pipeline with:
+
 ```bash
-# 1. Task 1 — Download EM patches and mito masks
-python download_datasets.py
-
-# 2. Task 2 — Extract dense bilinear embeddings (saves mito_embeddings.npz per crop)
-python extract_bilinear_embeddings.py
-
-# 3. Task 2 — Visualise dense embeddings (EM + mito overlay, PCA → RGB)
-streamlit run visualize_embeddings.py
-
-# 4. Task 4 — Train linear projection on frozen DINOv3 (saves data/projection.pt)
-#    This implements the Task 4 proposal; the projection is also used by Task 3 retrieval.
-python train_linear_probe.py
-
-# 5. Task 3/4 — Project embeddings to 256-dim (saves mito_embeddings_projected.npz per crop)
-python project_embeddings.py -p data/projection.pt
-
-# 6. Task 3 — Run retrieval dashboard
-streamlit run dashboard.py
+bash run.sh
 ```
+
+This runs all steps in order, printing PID, GPU/VRAM usage, and log path after each step. Both Streamlit dashboards are launched at the end in parallel.
+
+| Step | Script | Task |
+|------|--------|------|
+| 1 | `download_datasets.py` | Task 1 — download EM patches and mito masks |
+| 2 | `extract_bilinear_embeddings.py` | Task 2 — extract dense bilinear embeddings |
+| 3 | `train_linear_probe.py` | Task 4 — train linear projection on frozen DINOv3 |
+| 4 | `project_embeddings.py` | Task 3/4 — project embeddings to 256-dim |
+| 5 | `visualize_embeddings.py` | Task 2 — visualise dense embeddings (PCA → RGB) |
+| 6 | `dashboard.py` | Task 3 — retrieval dashboard |

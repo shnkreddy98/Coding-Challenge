@@ -35,14 +35,14 @@ def get_metadata(group: zarr.Group, path: str, scale: str):
     return scale_dim, translation_dim
 
 
-def find_crops_with_mito(group: zarr.Group) -> list[str]:
+def find_crops_with_mito(group: zarr.Group, scale: str) -> list[str]:
     """Return list of crop names that have a mito label with voxel data."""
-    gt = group['recon-1/labels/groundtruth']
+    gt: zarr.Group = group['recon-1/labels/groundtruth']
     crops = []
     for name, crop in gt.groups():
         if 'mito' not in crop.group_keys():
             continue
-        mito_arr = crop['mito/s2']
+        mito_arr = crop[f'mito/{scale}']
         if (mito_arr[:] == 1).any():
             crops.append(name)
     return crops
@@ -116,7 +116,7 @@ def download_dataset(name: str, s3_path: str, scale: str):
     logger.info(f"\nOpening {name}...")
     group = open_group(s3_path)
 
-    crops = find_crops_with_mito(group)
+    crops = find_crops_with_mito(group, scale)
     logger.info(f"  found {len(crops)} crops with mito: {crops}")
 
     for crop_name in crops:

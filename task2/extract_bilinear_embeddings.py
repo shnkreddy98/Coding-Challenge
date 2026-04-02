@@ -68,7 +68,7 @@ def process_crop(model: DinoV3Model, crop_path: Path) -> None:
     torch.cuda.empty_cache()
 
 
-def main() -> None:
+def extract_bilinear() -> None:
     model = DinoV3Model()
 
     logger.info(
@@ -89,4 +89,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    extract_bilinear()
