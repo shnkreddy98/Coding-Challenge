@@ -40,8 +40,6 @@ run_step() {
 
 run_step "Task 1 — Download datasets"            python download_datasets.py
 run_step "Task 2 — Extract bilinear embeddings"  python extract_bilinear_embeddings.py
-run_step "Task 4 — Train linear probe"           python train_linear_probe.py
-run_step "Task 3 — Project embeddings"           python project_embeddings.py -p data/projection.pt
 
 echo ""
 echo "=== Streamlit dashboards ==="
