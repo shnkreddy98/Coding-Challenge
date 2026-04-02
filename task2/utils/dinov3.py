@@ -6,11 +6,11 @@ from PIL import Image
 from transformers import AutoImageProcessor, AutoModel
 from utils.config import cfg
 
-MODEL_NAME = cfg['MODEL_NAME']
-PROJ_DIM = cfg['PROJ_DIM']
+MODEL_NAME = cfg["MODEL_NAME"]
+PROJ_DIM = cfg["PROJ_DIM"]
 
 
-class DinoV3Model():
+class DinoV3Model:
     def __init__(self, model_name: str = MODEL_NAME):
         self.processor = AutoImageProcessor.from_pretrained(model_name)
         self.model = AutoModel.from_pretrained(model_name, device_map="auto")
@@ -28,15 +28,17 @@ class DinoV3Model():
         # Skip the CLS token (index 0) and any register tokens (indices 1..n_registers).
         # Only the remaining tokens carry spatial patch information.
         n_registers = self.model.config.num_register_tokens
-        return embeddings.last_hidden_state[:, 1+n_registers:, :]
+        return embeddings.last_hidden_state[:, 1 + n_registers :, :]
 
     def get_dense_embeddings(self, patch_tokens, target_size):
         n_patches = patch_tokens.shape[1]
-        grid_size = int(n_patches ** 0.5)
+        grid_size = int(n_patches**0.5)
         embed_dim = patch_tokens.shape[2]
         tokens = patch_tokens[0].reshape(1, grid_size, grid_size, embed_dim)
         tokens = tokens.permute(0, 3, 1, 2)
-        dense = F.interpolate(tokens, size=target_size, mode='bilinear', align_corners=False)
+        dense = F.interpolate(
+            tokens, size=target_size, mode="bilinear", align_corners=False
+        )
         return dense.squeeze(0).permute(1, 2, 0)
 
 

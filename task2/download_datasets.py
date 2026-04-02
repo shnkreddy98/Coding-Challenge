@@ -12,53 +12,50 @@ custom_logging()
 logger = logging.getLogger(__name__)
 
 
-DATA_DIR = Path(cfg['DATA_DIR'])
+DATA_DIR = Path(cfg["DATA_DIR"])
 
 
 def open_group(s3_path: str) -> zarr.Group:
     store = fsspec.get_mapper(s3_path, anon=True)
-    return zarr.open_group(store, mode='r')
+    return zarr.open_group(store, mode="r")
 
 
 def get_metadata(group: zarr.Group, path: str, scale: str):
     """Read translation (offset) and voxel size in nm from multiscales attrs at given path and scale level."""
-    datasets = group[path].attrs['multiscales'][0]['datasets']
-    scale_meta = next(
-        (d for d in datasets if d['path'] == scale), 
-        None
-    )
+    datasets = group[path].attrs["multiscales"][0]["datasets"]
+    scale_meta = next((d for d in datasets if d["path"] == scale), None)
     if scale_meta is None:
         raise ValueError(f"Scale '{scale}' not found at path '{path}'")
 
-    scale_dim = scale_meta['coordinateTransformations'][0]['scale']  # [z, y, x] nm
-    translation_dim = scale_meta['coordinateTransformations'][1]['translation']  # [z, y, x] nm
+    scale_dim = scale_meta["coordinateTransformations"][0]["scale"]  # [z, y, x] nm
+    translation_dim = scale_meta["coordinateTransformations"][1][
+        "translation"
+    ]  # [z, y, x] nm
     return scale_dim, translation_dim
 
 
 def find_crops_with_mito(group: zarr.Group, scale: str) -> list[str]:
     """Return list of crop names that have a mito label with voxel data."""
-    gt: zarr.Group = group['recon-1/labels/groundtruth']
+    gt: zarr.Group = group["recon-1/labels/groundtruth"]
     crops = []
     for name, crop in gt.groups():
-        if 'mito' not in crop.group_keys():
+        if "mito" not in crop.group_keys():
             continue
-        mito_arr = crop[f'mito/{scale}']
+        mito_arr = crop[f"mito/{scale}"]
         if (mito_arr[:] == 1).any():
             crops.append(name)
     return crops
 
 
 def get_em_patch_for_crop(
-    group: zarr.Group,
-    crop_name: str,
-    scale: str
+    group: zarr.Group, crop_name: str, scale: str
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Given a crop name, fetch the aligned EM patch and mito mask at the given scale.
     Returns (em_patch, mito_mask) as numpy arrays.
     """
-    mito_path = f'recon-1/labels/groundtruth/{crop_name}/mito'
-    em_path = 'recon-1/em/fibsem-uint8'
+    mito_path = f"recon-1/labels/groundtruth/{crop_name}/mito"
+    em_path = "recon-1/em/fibsem-uint8"
 
     em_voxel_size, _ = get_metadata(group, em_path, scale)
     mito_voxel_size, crop_translation = get_metadata(group, mito_path, scale)
@@ -69,7 +66,7 @@ def get_em_patch_for_crop(
     x_start = int(round(crop_translation[2] / em_voxel_size[2]))
 
     # get mito array — shape tells us the crop size
-    mito_arr = group[f'{mito_path}/{scale}']
+    mito_arr = group[f"{mito_path}/{scale}"]
 
     # use physical size to compute EM slice counts
     z_physical = mito_arr.shape[0] * mito_voxel_size[0]
@@ -80,22 +77,26 @@ def get_em_patch_for_crop(
     y_size_em = int(round(y_physical / em_voxel_size[1]))
     x_size_em = int(round(x_physical / em_voxel_size[2]))
 
-    em_arr = group[f'{em_path}/{scale}']
+    em_arr = group[f"{em_path}/{scale}"]
     em_patch = em_arr[
-        z_start:z_start + z_size_em,
-        y_start:y_start + y_size_em,
-        x_start:x_start + x_size_em
+        z_start : z_start + z_size_em,
+        y_start : y_start + y_size_em,
+        x_start : x_start + x_size_em,
     ]
 
     mito_mask = mito_arr[:]
 
-    logger.info(f"  crop {crop_name}: offset=({z_start},{y_start},{x_start}) "
-                f"em_shape={em_patch.shape} mito_shape={mito_mask.shape}")
+    logger.info(
+        f"  crop {crop_name}: offset=({z_start},{y_start},{x_start}) "
+        f"em_shape={em_patch.shape} mito_shape={mito_mask.shape}"
+    )
 
     return em_patch, mito_mask
 
 
-def save(dataset_name: str, crop_name: str, em_patch: np.ndarray, mito_mask: np.ndarray):
+def save(
+    dataset_name: str, crop_name: str, em_patch: np.ndarray, mito_mask: np.ndarray
+):
     out = DATA_DIR / dataset_name / crop_name
     out.mkdir(parents=True, exist_ok=True)
     np.save(out / "em.npy", em_patch)
@@ -106,11 +107,11 @@ def save(dataset_name: str, crop_name: str, em_patch: np.ndarray, mito_mask: np.
 def download_dataset(name: str, s3_path: str, scale: str):
     """
     Download EM patch and mito mask for all crops in a dataset.
-    
+
     Args:
         name:    dataset name, used as output directory name e.g. 'jrc_hela-3'
         s3_path: full S3 path to zarr store e.g. 's3://janelia-cosem-datasets/jrc_hela-3/jrc_hela-3.zarr'
-        scale:   resolution level to download, one of 's0'-'s4'. 
+        scale:   resolution level to download, one of 's0'-'s4'.
                  's2' recommended — balances detail vs download size.
     """
     logger.info(f"\nOpening {name}...")
@@ -132,10 +133,10 @@ def download_dataset(name: str, s3_path: str, scale: str):
 if __name__ == "__main__":
     DATA_DIR.mkdir(exist_ok=True)
 
-    dataset_names = cfg['DATASET_NAMES']
-    s3_path = cfg['S3_PATH']
-    scale = cfg['SCALE']
+    dataset_names = cfg["DATASET_NAMES"]
+    s3_path = cfg["S3_PATH"]
+    scale = cfg["SCALE"]
 
     for name in dataset_names:
-        dataset_path = f'{s3_path}/{name}/{name}.zarr'
+        dataset_path = f"{s3_path}/{name}/{name}.zarr"
         download_dataset(name, dataset_path, scale)

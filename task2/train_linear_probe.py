@@ -11,11 +11,11 @@ from utils.dinov3 import get_all_crops
 from utils.retrieval import load_mito_mask
 from utils.logging import custom_logging
 
-DATA_DIR = Path(cfg['DATA_DIR'])
-N_EPOCHS = cfg['N_EPOCHS']
-LR = cfg['LR']
-PROJ_DIM = cfg['PROJ_DIM']
-EMBED_DIM = AutoConfig.from_pretrained(cfg['MODEL_NAME']).hidden_size
+DATA_DIR = Path(cfg["DATA_DIR"])
+N_EPOCHS = cfg["N_EPOCHS"]
+LR = cfg["LR"]
+PROJ_DIM = cfg["PROJ_DIM"]
+EMBED_DIM = AutoConfig.from_pretrained(cfg["MODEL_NAME"]).hidden_size
 
 custom_logging()
 logger = logging.getLogger(__name__)
@@ -28,18 +28,16 @@ def train_slice(
     optimizer: torch.optim.Optimizer,
     criterion: nn.Module,
     mito_slice: np.ndarray,
-    dense: np.ndarray
+    dense: np.ndarray,
 ) -> float:
     """Forward + backward pass for one z-slice. Returns the scalar loss."""
 
     dense_t = torch.tensor(dense.astype(np.float32)).to(device)
 
-    projected = projection(dense_t)       # (H, W, 256)
-    pred = seg_head(projected)          # (H, W, 1)
+    projected = projection(dense_t)  # (H, W, 256)
+    pred = seg_head(projected)  # (H, W, 1)
 
-    target = torch.tensor(
-        mito_slice.astype(np.float32)
-    ).unsqueeze(-1).to(device)
+    target = torch.tensor(mito_slice.astype(np.float32)).unsqueeze(-1).to(device)
 
     loss = criterion(pred, target)
     optimizer.zero_grad()
@@ -67,20 +65,25 @@ def train_epoch(
     total_slices = 0
 
     for dataset, crop, crop_path in all_crops:
-        logger.info(f"  epoch {epoch+1} | {dataset}/{crop}")
+        logger.info(f"  epoch {epoch + 1} | {dataset}/{crop}")
 
-        em = np.load(crop_path / 'em.npy', mmap_mode='r')
+        em = np.load(crop_path / "em.npy", mmap_mode="r")
         mito_mask_ds = load_mito_mask(crop_path, em.shape)
-        dense_embeddings = np.load(crop_path / 'dense_embeddings.npy', mmap_mode='r')  # (Z, H, W, 1024)
+        dense_embeddings = np.load(
+            crop_path / "dense_embeddings.npy", mmap_mode="r"
+        )  # (Z, H, W, 1024)
 
         for z_idx in range(em.shape[0]):
             if mito_mask_ds[z_idx].sum() == 0:
                 continue
             loss_val = train_slice(
                 device,
-                projection, seg_head, optimizer, criterion,
+                projection,
+                seg_head,
+                optimizer,
+                criterion,
                 mito_mask_ds[z_idx],
-                dense_embeddings[z_idx]
+                dense_embeddings[z_idx],
             )
             total_loss += loss_val
             total_slices += 1
@@ -89,7 +92,7 @@ def train_epoch(
         gc.collect()
 
     avg_loss = total_loss / total_slices if total_slices > 0 else 0.0
-    logger.info(f"  epoch {epoch+1}/{N_EPOCHS} avg_loss={avg_loss:.4f}")
+    logger.info(f"  epoch {epoch + 1}/{N_EPOCHS} avg_loss={avg_loss:.4f}")
     return avg_loss
 
 
@@ -109,7 +112,9 @@ def train(all_crops: list) -> nn.Linear:
     seg_head.train()
 
     for epoch in range(N_EPOCHS):
-        train_epoch(device, projection, seg_head, optimizer, criterion, all_crops, epoch)
+        train_epoch(
+            device, projection, seg_head, optimizer, criterion, all_crops, epoch
+        )
 
     return projection
 
@@ -120,7 +125,7 @@ def main() -> None:
 
     projection = train(all_crops)
 
-    torch.save(projection.state_dict(), DATA_DIR / 'projection.pt')
+    torch.save(projection.state_dict(), DATA_DIR / "projection.pt")
     logger.info(f"projection weights saved → {DATA_DIR / 'projection.pt'}")
 
 
