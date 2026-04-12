@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 
 from PIL import Image
 from pathlib import Path
+from sklearn.metrics import average_precision_score
 from utils.config import cfg
 from utils.retrieval import (
     load_crop,
@@ -61,9 +62,13 @@ def cached_load_crop(dataset: str, crop: str, projected: bool = False) -> dict:
 
 
 def overlay_similarity(
-    em_slice: np.ndarray, sim_map: np.ndarray, size: int = 400
+    em_slice: np.ndarray,
+    sim_map: np.ndarray,
+    size: int = 400,
+    mito_mask: np.ndarray | None = None,
 ) -> plt.Figure:
-    """Render EM slice with cosine similarity heat map overlaid."""
+    """Render EM slice with cosine similarity heat map overlaid.
+    Optionally draws GT mito mask contour in cyan."""
     dpi = 100
     fig, ax = plt.subplots(figsize=(size / dpi, size / dpi), dpi=dpi)
     ax.imshow(em_slice, cmap="gray", interpolation="nearest")
@@ -76,6 +81,8 @@ def overlay_similarity(
         fraction=0.046,
         label="cosine similarity",
     )
+    if mito_mask is not None and mito_mask.any():
+        ax.contour(mito_mask, levels=[0.5], colors="cyan", linewidths=1.5)
     ax.axis("off")
     plt.tight_layout(pad=0)
     return fig
@@ -185,10 +192,17 @@ with col2:
             sim_intra = compute_similarity(query_emb, intra_data["embeddings"])
             sim_map_intra = build_similarity_map(sim_intra, Z_INTRA)
             fig = overlay_similarity(
-                intra_data["em"][Z_INTRA], sim_map_intra, DISPLAY_SIZE
+                intra_data["em"][Z_INTRA],
+                sim_map_intra,
+                DISPLAY_SIZE,
+                mito_mask=intra_data["mito_mask"][Z_INTRA],
             )
             st.pyplot(fig)
             plt.close()
+            ap_intra = average_precision_score(
+                intra_data["mito_mask"].flatten(), sim_intra.flatten()
+            )
+            st.metric("Average Precision", f"{ap_intra:.3f}", help="Cyan contour = GT mito mask")
         else:
             st.warning("No mito pixels in query slice")
     else:
@@ -202,10 +216,17 @@ with col3:
             sim_inter = compute_similarity(query_emb, inter_data["embeddings"])
             sim_map_inter = build_similarity_map(sim_inter, Z_INTER)
             fig = overlay_similarity(
-                inter_data["em"][Z_INTER], sim_map_inter, DISPLAY_SIZE
+                inter_data["em"][Z_INTER],
+                sim_map_inter,
+                DISPLAY_SIZE,
+                mito_mask=inter_data["mito_mask"][Z_INTER],
             )
             st.pyplot(fig)
             plt.close()
+            ap_inter = average_precision_score(
+                inter_data["mito_mask"].flatten(), sim_inter.flatten()
+            )
+            st.metric("Average Precision", f"{ap_inter:.3f}", help="Cyan contour = GT mito mask")
         else:
             st.warning("No mito pixels in query slice")
     else:
