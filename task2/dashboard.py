@@ -202,7 +202,12 @@ with col2:
             ap_intra = average_precision_score(
                 intra_data["mito_mask"].flatten(), sim_intra.flatten()
             )
+            pred_intra = (sim_intra > 0.5).astype(int)
+            intersection = (pred_intra & intra_data["mito_mask"]).sum()
+            union = (pred_intra | intra_data["mito_mask"]).sum()
+            iou_intra = intersection / union if union > 0 else 0.0
             st.metric("Average Precision", f"{ap_intra:.3f}", help="Cyan contour = GT mito mask")
+            st.metric("IoU (threshold=0.5)", f"{iou_intra:.3f}")
         else:
             st.warning("No mito pixels in query slice")
     else:
@@ -226,7 +231,12 @@ with col3:
             ap_inter = average_precision_score(
                 inter_data["mito_mask"].flatten(), sim_inter.flatten()
             )
+            pred_inter = (sim_inter > 0.5).astype(int)
+            intersection = (pred_inter & inter_data["mito_mask"]).sum()
+            union = (pred_inter | inter_data["mito_mask"]).sum()
+            iou_inter = intersection / union if union > 0 else 0.0
             st.metric("Average Precision", f"{ap_inter:.3f}", help="Cyan contour = GT mito mask")
+            st.metric("IoU (threshold=0.5)", f"{iou_inter:.3f}")
         else:
             st.warning("No mito pixels in query slice")
     else:

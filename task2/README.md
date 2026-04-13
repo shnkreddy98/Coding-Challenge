@@ -107,7 +107,10 @@ The same mean mito query embedding is compared against embeddings from a crop in
 
 Cross-dataset similarity scores show slightly less contrast than intra-dataset due to minor differences in imaging conditions, but mito regions in the target still score visibly higher than background, confirming the embeddings capture organelle-level semantics without any domain-specific training.
 
-Query mitochondrion with red mask (left), cosine similarity heat map on same-dataset crop (centre) and cross-dataset crop (right). Cyan contour = ground-truth mito mask boundary. Average Precision (AP) is shown below each target — it measures how well the similarity ranking recovers mito pixels: pixels are ranked by cosine similarity, and AP is the area under the precision-recall curve against the binary mito mask. AP = 1.0 means all mito pixels ranked above all background pixels.
+Query mitochondrion with red mask (left), cosine similarity heat map on same-dataset crop (centre) and cross-dataset crop (right). Cyan contour = ground-truth mito mask boundary. Two metrics are shown below each target, both computed over the full 3D volume (all z-slices):
+
+- **Average Precision (AP)** — area under the precision-recall curve against the binary mito mask. Measures how well the similarity ranking recovers mito pixels. AP = 1.0 means all mito pixels ranked above all background pixels.
+- **IoU (threshold=0.5)** — similarity map thresholded at 0.5, then intersection-over-union against GT mito mask. Measures boundary precision — how well the predicted region overlaps the actual mito region.
 
 ![Task 3 intra and inter dataset retrieval](screenshots/task3_intra_inter_embeddings.png)
 
@@ -140,7 +143,14 @@ Train a linear projection head (1024 -> 256) plus a binary segmentation head (25
 
 DINOv3's self-supervised pretraining produces embeddings that already separate visually distinct regions. Mitochondria have a consistent appearance in EM that differs from surrounding structures, so a linear probe can learn to separate them with very few trainable parameters and minimal risk of overfitting.
 
-Cosine similarity retrieval using projected 256-dim embeddings from the trained linear probe (toggle "Use projected embeddings" in the dashboard sidebar). Cyan contour = ground-truth mito mask boundary. AP scores show a marked improvement over raw DINOv3 embeddings — the linear projection learns to amplify mito-specific directions in embedding space, pushing mito pixels to the top of the similarity ranking.
+Cosine similarity retrieval using projected 256-dim embeddings from the trained linear probe (toggle "Use projected embeddings" in the dashboard sidebar). Cyan contour = ground-truth mito mask boundary. AP and IoU (threshold=0.5) are shown below each target, both computed over the full 3D volume. The linear projection learns to amplify mito-specific directions in embedding space, pushing mito pixels to the top of the similarity ranking and sharpening boundary precision.
+
+| | AP | IoU (threshold=0.5) |
+|---|---|---|
+| Raw DINOv3 intra-dataset | 0.181 | 0.069 |
+| Raw DINOv3 inter-dataset | 0.606 | 0.212 |
+| Linear probe intra-dataset | 0.815 | 0.646 |
+| Linear probe inter-dataset | 0.988 | 0.898 |
 
 ![Task 4 linear probe retrieval](screenshots/task4_linear_probe.png)
 
