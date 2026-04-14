@@ -4,7 +4,7 @@ import numpy as np
 from pathlib import Path
 from PIL import Image
 from sklearn.decomposition import PCA
-from utils.config import cfg
+from utils.config import cfg, model_tag
 from utils.retrieval import load_mito_mask
 
 DATA_DIR = Path(cfg["DATA_DIR"])
@@ -30,7 +30,7 @@ def get_crops(dataset: str) -> list[str]:
         [
             c.name
             for c in (DATA_DIR / dataset).iterdir()
-            if c.is_dir() and (c / "dense_embeddings.npy").exists()
+            if c.is_dir() and (c / f"dense_embeddings_{model_tag()}.npy").exists()
         ]
     )
 
@@ -52,7 +52,7 @@ def fit_pca(dataset: str, crop: str, max_pixels: int = 50_000) -> PCA:
     """
     crop_path = DATA_DIR / dataset / crop
     embeddings = np.load(
-        crop_path / "dense_embeddings.npy", mmap_mode="r"
+        crop_path / f"dense_embeddings_{model_tag()}.npy", mmap_mode="r"
     )  # (Z, H, W, 1024) float16
     Z, H, W, D = embeddings.shape
 
@@ -70,7 +70,7 @@ def fit_pca(dataset: str, crop: str, max_pixels: int = 50_000) -> PCA:
 def get_pca_rgb(dataset: str, crop: str, z: int) -> np.ndarray:
     """Apply the crop-level PCA to one z-slice and return an (H, W, 3) uint8 image."""
     crop_path = DATA_DIR / dataset / crop
-    embeddings = np.load(crop_path / "dense_embeddings.npy", mmap_mode="r")
+    embeddings = np.load(crop_path / f"dense_embeddings_{model_tag()}.npy", mmap_mode="r")
     emb_slice = embeddings[z].astype(np.float32)  # (H, W, 1024)
     H, W, D = emb_slice.shape
 
