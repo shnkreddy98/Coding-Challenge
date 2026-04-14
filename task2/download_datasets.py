@@ -1,3 +1,4 @@
+import asyncio
 import fsspec
 import logging
 import numpy as np
@@ -35,14 +36,13 @@ def get_metadata(group: zarr.Group, path: str, scale: str):
 
 
 def find_crops_with_mito(group: zarr.Group, scale: str) -> list[str]:
-    """Return list of crop names that have a mito label with voxel data."""
+    """Return crops that have mito voxels — metadata only, no array download."""
     gt: zarr.Group = group["recon-1/labels/groundtruth"]
     crops = []
     for name, crop in gt.groups():
-        if "mito" not in crop.group_keys():
+        if f"mito/{scale}" not in crop:
             continue
-        mito_arr = crop[f"mito/{scale}"]
-        if (mito_arr[:] == 1).any():
+        if crop[f"mito/{scale}"].nchunks_initialized > 0:
             crops.append(name)
     return crops
 
@@ -129,6 +129,13 @@ def download_dataset(name: str, s3_path: str, scale: str):
             logger.error(f"  skipping {crop_name}: {e}")
             logger.debug(traceback.format_exc())
 
+async def download_datasets_parallel(datasets: list[str], s3_path: str, scale: str):
+    """Parallelize downloading datasets"""
+    tasks = [
+        asyncio.to_thread(download_dataset, name, f"{s3_path}/{name}/{name}.zarr", scale)
+        for name in datasets
+    ]
+    await asyncio.gather(*tasks)
 
 if __name__ == "__main__":
     DATA_DIR.mkdir(exist_ok=True)
@@ -136,7 +143,6 @@ if __name__ == "__main__":
     dataset_names = cfg["DATASET_NAMES"]
     s3_path = cfg["S3_PATH"]
     scale = cfg["SCALE"]
+    asyncio.run(download_datasets_parallel(dataset_names, s3_path, scale))
 
-    for name in dataset_names:
-        dataset_path = f"{s3_path}/{name}/{name}.zarr"
-        download_dataset(name, dataset_path, scale)
+
