@@ -14,7 +14,7 @@ Requires a CUDA-capable GPU (~1.4 GB VRAM for ViT-L, ~7 GB RAM after model load)
 [`download_datasets.py`](download_datasets.py) downloads EM image patches and mitochondria masks from the [OpenOrganelle](https://openorganelle.janelia.org) S3 bucket (public, anonymous access).
 
 Datasets, S3 path, resolution scale, and output directory are all set in `config.yaml`:
-- `DATASET_NAMES` - list of datasets to download (`jrc_hela-2`, `jrc_hela-3`)
+- `DATASET_NAMES` - list of datasets to download (`jrc_hela-2`, `jrc_hela-3`, `jrc_mus-kidney`)
 - `S3_PATH` - base S3 bucket path
 - `SCALE` - resolution level (`s2` by default)
 - `DATA_DIR` - local output directory
@@ -31,7 +31,11 @@ data/
 │   └── crop_X/
 │       ├── em.npy
 │       └── mito_mask.npy
-└── jrc_hela-3/
+├── jrc_hela-3/
+│   └── crop_X/
+│       ├── em.npy
+│       └── mito_mask.npy
+└── jrc_mus-kidney/
     └── crop_X/
         ├── em.npy
         └── mito_mask.npy
@@ -107,7 +111,7 @@ The same mean mito query embedding is compared against embeddings from a crop in
 
 Cross-dataset similarity scores show slightly less contrast than intra-dataset due to minor differences in imaging conditions, but mito regions in the target still score visibly higher than background, confirming the embeddings capture organelle-level semantics without any domain-specific training.
 
-Query mitochondrion with red mask (left), cosine similarity heat map on same-dataset crop (centre) and cross-dataset crop (right). Cyan contour = ground-truth mito mask boundary. Two metrics are shown below each target, both computed over the full 3D volume (all z-slices):
+Query mitochondrion (jrc_hela-3/crop101, red mask, left), cosine similarity heat map on same-dataset crop jrc_hela-3/crop111 (centre) and cross-dataset crop jrc_mus-kidney/crop129 (right). Cyan contour = ground-truth mito mask boundary. Two metrics are shown below each target, both computed over the full 3D volume (all z-slices):
 
 - **Average Precision (AP)** — area under the precision-recall curve against the binary mito mask. Measures how well the similarity ranking recovers mito pixels. AP = 1.0 means all mito pixels ranked above all background pixels.
 - **IoU (threshold=0.5)** — similarity map thresholded at 0.5, then intersection-over-union against GT mito mask. Measures boundary precision — how well the predicted region overlaps the actual mito region.
@@ -147,10 +151,10 @@ Cosine similarity retrieval using projected 256-dim embeddings from the trained 
 
 | | AP | IoU (threshold=0.5) |
 |---|---|---|
-| Raw DINOv3 intra-dataset | 0.181 | 0.069 |
-| Raw DINOv3 inter-dataset | 0.606 | 0.212 |
-| Linear probe intra-dataset | 0.815 | 0.646 |
-| Linear probe inter-dataset | 0.988 | 0.898 |
+| Raw DINOv3 intra-dataset (hela-3/crop101 → hela-3/crop111) | 0.434 | 0.158 |
+| Raw DINOv3 inter-dataset (hela-3/crop101 → mus-kidney/crop129) | 0.179 | 0.173 |
+| Linear probe intra-dataset | 0.968 | 0.797 |
+| Linear probe inter-dataset | 0.862 | 0.638 |
 
 ![Task 4 linear probe retrieval](screenshots/task4_linear_probe.png)
 
@@ -165,6 +169,7 @@ S3_PATH: s3://janelia-cosem-datasets
 DATASET_NAMES:
   - jrc_hela-2
   - jrc_hela-3
+  - jrc_mus-kidney
 SCALE: s2
 DATA_DIR: data
 MODEL_NAME: facebook/dinov3-vitl16-pretrain-lvd1689m
@@ -175,8 +180,9 @@ LR: 0.001
 SEED: 42
 TRAIN_DATASETS:
   - jrc_hela-2
-EVAL_DATASETS:
   - jrc_hela-3
+EVAL_DATASETS:
+  - jrc_mus-kidney
 DISPLAY_SIZE: 400
 ```
 
