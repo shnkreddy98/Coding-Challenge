@@ -3,7 +3,7 @@ import numpy as np
 from pathlib import Path
 from skimage.transform import resize
 from sklearn.metrics.pairwise import cosine_similarity
-from utils.config import cfg
+from utils.config import cfg, model_tag
 
 DATA_DIR = Path(cfg["DATA_DIR"])
 
@@ -20,14 +20,15 @@ def load_mito_mask(crop_path: Path, em_shape: tuple) -> np.ndarray:
 
 def load_crop(dataset: str, crop: str, projected: bool = False) -> dict:
     crop_path = DATA_DIR / dataset / crop
-    proj_path = crop_path / "mito_embeddings.npz"
+    tag = model_tag()
+    proj_path = crop_path / f"mito_embeddings_{tag}.npz"
 
     if projected and proj_path.exists():
         data = np.load(proj_path)
         embeddings = data["embeddings"]  # (Z, H, W, 256) float16
     else:
         embeddings = np.load(
-            crop_path / "dense_embeddings.npy", mmap_mode="r"
+            crop_path / f"dense_embeddings_{tag}.npy", mmap_mode="r"
         )  # (Z, H, W, 1024) float16
 
     em = np.load(crop_path / "em.npy")

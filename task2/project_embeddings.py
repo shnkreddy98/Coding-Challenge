@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 
 from pathlib import Path
-from utils.config import cfg
+from utils.config import cfg, model_tag
 from utils.dinov3 import get_all_crops
 from utils.logging import custom_logging
 
@@ -39,8 +39,8 @@ if __name__ == "__main__":
     all_crops = get_all_crops(DATA_DIR)
 
     for dataset, crop, crop_path in all_crops:
-        src = crop_path / "dense_embeddings.npy"
-        dst = crop_path / "mito_embeddings.npz"
+        src = crop_path / f"dense_embeddings_{model_tag()}.npy"
+        dst = crop_path / f"mito_embeddings_{model_tag()}.npz"
 
         if not src.exists():
             logger.info(f"  skipping {dataset}/{crop} — dense_embeddings.npy not found")

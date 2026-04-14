@@ -5,7 +5,7 @@ import torch
 
 from PIL import Image
 from pathlib import Path
-from utils.config import cfg
+from utils.config import cfg, model_tag
 from utils.dinov3 import DinoV3Model, get_all_crops
 from utils.logging import custom_logging
 
@@ -41,7 +41,7 @@ def process_crop(model: DinoV3Model, crop_path: Path) -> None:
     Output: <crop_path>/dense_embeddings.npy  shape (Z, H, W, 1024) float16
     Skips the crop if the output file already exists.
     """
-    save_path = crop_path / "dense_embeddings.npy"
+    save_path = crop_path / f"dense_embeddings_{model_tag()}.npy"
     if save_path.exists():
         logger.info(f"  skipping {crop_path} — already done")
         return

@@ -172,6 +172,11 @@ EMBED_DIM: 1024
 PROJ_DIM: 256
 N_EPOCHS: 3
 LR: 0.001
+SEED: 42
+TRAIN_DATASETS:
+  - jrc_hela-2
+EVAL_DATASETS:
+  - jrc_hela-3
 DISPLAY_SIZE: 400
 ```
 
@@ -198,5 +203,5 @@ This runs all steps in order, printing PID, GPU/VRAM usage, and log path after e
 
 ```bash
 python train_linear_probe.py
-python project_embeddings.py -p data/projection.pt
+python project_embeddings.py -p data/projection_dinov3-vitl16_256.pt
 ```

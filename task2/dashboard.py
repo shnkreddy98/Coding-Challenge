@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 from pathlib import Path
 from sklearn.metrics import average_precision_score
-from utils.config import cfg
+from utils.config import cfg, model_tag
 from utils.retrieval import (
     load_crop,
     get_mito_embedding,
@@ -47,11 +47,12 @@ def get_datasets() -> list[str]:
 
 def get_crops(dataset: str) -> list[str]:
     dataset_path = DATA_DIR / dataset
+    tag = model_tag()
     return sorted(
         [
             c.name
             for c in dataset_path.iterdir()
-            if c.is_dir() and (c / "dense_embeddings.npy").exists()
+            if c.is_dir() and (c / f"dense_embeddings_{tag}.npy").exists()
         ]
     )
 
