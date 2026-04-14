@@ -70,7 +70,9 @@ def fit_pca(dataset: str, crop: str, max_pixels: int = 50_000) -> PCA:
 def get_pca_rgb(dataset: str, crop: str, z: int) -> np.ndarray:
     """Apply the crop-level PCA to one z-slice and return an (H, W, 3) uint8 image."""
     crop_path = DATA_DIR / dataset / crop
-    embeddings = np.load(crop_path / f"dense_embeddings_{model_tag()}.npy", mmap_mode="r")
+    embeddings = np.load(
+        crop_path / f"dense_embeddings_{model_tag()}.npy", mmap_mode="r"
+    )
     emb_slice = embeddings[z].astype(np.float32)  # (H, W, 1024)
     H, W, D = emb_slice.shape
 

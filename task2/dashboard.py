@@ -207,7 +207,11 @@ with col2:
             intersection = (pred_intra & intra_data["mito_mask"]).sum()
             union = (pred_intra | intra_data["mito_mask"]).sum()
             iou_intra = intersection / union if union > 0 else 0.0
-            st.metric("Average Precision", f"{ap_intra:.3f}", help="Cyan contour = GT mito mask")
+            st.metric(
+                "Average Precision",
+                f"{ap_intra:.3f}",
+                help="Cyan contour = GT mito mask",
+            )
             st.metric("IoU (threshold=0.5)", f"{iou_intra:.3f}")
         else:
             st.warning("No mito pixels in query slice")
@@ -236,7 +240,11 @@ with col3:
             intersection = (pred_inter & inter_data["mito_mask"]).sum()
             union = (pred_inter | inter_data["mito_mask"]).sum()
             iou_inter = intersection / union if union > 0 else 0.0
-            st.metric("Average Precision", f"{ap_inter:.3f}", help="Cyan contour = GT mito mask")
+            st.metric(
+                "Average Precision",
+                f"{ap_inter:.3f}",
+                help="Cyan contour = GT mito mask",
+            )
             st.metric("IoU (threshold=0.5)", f"{iou_inter:.3f}")
         else:
             st.warning("No mito pixels in query slice")

@@ -129,13 +129,17 @@ def download_dataset(name: str, s3_path: str, scale: str):
             logger.error(f"  skipping {crop_name}: {e}")
             logger.debug(traceback.format_exc())
 
+
 async def download_datasets_parallel(datasets: list[str], s3_path: str, scale: str):
     """Parallelize downloading datasets"""
     tasks = [
-        asyncio.to_thread(download_dataset, name, f"{s3_path}/{name}/{name}.zarr", scale)
+        asyncio.to_thread(
+            download_dataset, name, f"{s3_path}/{name}/{name}.zarr", scale
+        )
         for name in datasets
     ]
     await asyncio.gather(*tasks)
+
 
 if __name__ == "__main__":
     DATA_DIR.mkdir(exist_ok=True)
@@ -144,5 +148,3 @@ if __name__ == "__main__":
     s3_path = cfg["S3_PATH"]
     scale = cfg["SCALE"]
     asyncio.run(download_datasets_parallel(dataset_names, s3_path, scale))
-
-
